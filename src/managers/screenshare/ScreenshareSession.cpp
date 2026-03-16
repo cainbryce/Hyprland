@@ -117,6 +117,8 @@ void CScreenshareSession::calculateConstraints() {
             return;
     }
 
+    m_damageRing.setSize(m_bufferSize);
+
     LOGM(Log::TRACE, "constraints changed for {}", m_name);
 }
 
@@ -136,6 +138,10 @@ void CScreenshareSession::screenshareEvents(bool startSharing) {
 
         Event::bus()->m_events.screenshare.state.emit(false, m_type, m_name);
     }
+}
+
+void CScreenshareSession::accumulateDamage(const CRegion& damage) {
+    m_damageRing.damage(damage);
 }
 
 const std::vector<DRMFormat>& CScreenshareSession::allowedFormats() const {

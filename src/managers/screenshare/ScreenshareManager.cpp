@@ -15,13 +15,9 @@ void CScreenshareManager::onOutputCommit(PHLMONITOR monitor) {
 
     // if no pending frames, and no sessions are sharing, then unblock ds
     if (m_pendingFrames.empty()) {
-        for (const auto& session : m_sessions) {
-            if (!session->m_stopped && session->m_sharing)
-                return;
-        }
-
-        g_pHyprRenderer->m_directScanoutBlocked = false;
-        return; // nothing to share
+        if (std::ranges::none_of(m_sessions, [](const auto& s) { return !s.expired() && !s->m_stopped && s->m_sharing; }))
+            g_pHyprRenderer->m_directScanoutBlocked = false;
+        return;
     }
 
     std::ranges::for_each(m_pendingFrames, [&](WP<CScreenshareFrame>& frame) {
@@ -41,6 +37,28 @@ void CScreenshareManager::onOutputCommit(PHLMONITOR monitor) {
     });
 
     std::erase_if(m_pendingFrames, [&](const WP<CScreenshareFrame>& frame) { return frame.expired(); });
+}
+
+void CScreenshareManager::onMonitorDamage(PHLMONITOR monitor, const CRegion& damage) {
+    for (const auto& session : m_sessions) {
+        if (session.expired() || session->m_stopped)
+            continue;
+
+        if (session->monitor() != monitor)
+            continue;
+
+        if (session->m_type == SHARE_MONITOR)
+            session->accumulateDamage(damage);
+        else if (session->m_type == SHARE_REGION) {
+            // translate damage to the capture box coordinate space
+            CRegion translated = damage.copy().translate(-session->m_captureBox.pos());
+            session->accumulateDamage(translated);
+        } else if (session->m_type == SHARE_WINDOW) {
+            // window damage is accumulated when the window surface commits, but
+            // monitor damage may still be relevant (e.g. overlapping windows)
+            session->accumulateDamage(damage);
+        }
+    }
 }
 
 UP<CScreenshareSession> CScreenshareManager::newSession(wl_client* client, PHLMONITOR monitor) {

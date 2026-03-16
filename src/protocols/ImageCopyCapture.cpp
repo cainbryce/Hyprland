@@ -107,7 +107,11 @@ CImageCopyCaptureCursorSession::CImageCopyCaptureCursorSession(SP<CExtImageCopyC
 
     const auto PMONITOR = m_source->m_monitor.expired() ? m_source->m_window->m_monitor.lock() : m_source->m_monitor.lock();
 
-    // TODO: add listeners for source being destroyed
+    // listen for source monitor/window being destroyed so we can clean up
+    if (!m_source->m_monitor.expired())
+        m_listeners.sourceDestroyed = m_source->m_monitor->m_events.disconnect.listen([this]() { PROTO::imageCopyCapture->destroyResource(this); });
+    else if (!m_source->m_window.expired())
+        m_listeners.sourceDestroyed = m_source->m_window->m_events.unmap.listen([this]() { PROTO::imageCopyCapture->destroyResource(this); });
 
     sendCursorEvents();
     m_listeners.commit = PMONITOR->m_events.commit.listen([this, PMONITOR]() { sendCursorEvents(); });
@@ -429,8 +433,12 @@ CImageCopyCaptureFrame::CImageCopyCaptureFrame(SP<CExtImageCopyCaptureFrameV1> r
 
     m_clientDamage.clear();
 
-    // TODO: see ScreenshareFrame::share() for "add a damage ring for output damage since last shared frame"
-    m_resource->sendDamage(0, 0, m_session->m_bufferSize.x, m_session->m_bufferSize.y);
+    // send accumulated damage regions to the client
+    const auto& frameDamage = m_frame->damage();
+    if (frameDamage.empty())
+        m_resource->sendDamage(0, 0, m_session->m_bufferSize.x, m_session->m_bufferSize.y);
+    else
+        frameDamage.forEachRect([&](const auto& rect) { m_resource->sendDamage(rect.x1, rect.y1, rect.x2 - rect.x1, rect.y2 - rect.y1); });
 
     m_resource->sendTransform(m_frame->transform());
 }

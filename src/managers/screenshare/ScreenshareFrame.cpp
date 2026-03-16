@@ -108,14 +108,17 @@ eScreenshareError CScreenshareFrame::share(SP<IHLBuffer> buffer, const CRegion& 
         g_pHyprRenderer->damageMonitor(m_session->monitor());
     }
 
-    // TODO: add a damage ring for output damage since last shared frame
-    CRegion frameDamage = CRegion(0, 0, m_bufferSize.x, m_bufferSize.y);
-
-    // copy everything on the first frame
+    // copy everything on the first frame, otherwise use accumulated output damage
     if (m_isFirst)
         m_damage = CRegion(0, 0, m_bufferSize.x, m_bufferSize.y);
-    else
-        m_damage = frameDamage.add(clientDamage);
+    else {
+        // getBufferDamage(1) returns the damage accumulated since the last rotate()
+        m_damage = m_session->m_damageRing.getBufferDamage(1);
+        m_damage.add(clientDamage);
+    }
+
+    // rotate the ring so subsequent frames accumulate new damage
+    m_session->m_damageRing.rotate();
 
     m_damage.intersect(0, 0, m_bufferSize.x, m_bufferSize.y);
 
@@ -431,9 +434,8 @@ bool CScreenshareFrame::copyShm() {
         });
     } else {
         m_damage.forEachRect([&](const auto& rect) {
-            size_t width  = rect.x2 - rect.x1;
-            size_t height = rect.y2 - rect.y1;
-            for (size_t i = rect.y1; i < height; ++i) {
+            size_t width = rect.x2 - rect.x1;
+            for (size_t i = rect.y1; i < sc<size_t>(rect.y2); ++i) {
                 glReadPixels(rect.x1, i, width, 1, glFormat, PFORMAT->glType, pixelData + (rect.x1 * PFORMAT->bytesPerBlock) + (i * shm.stride));
             }
         });

@@ -98,6 +98,7 @@ class CImageCopyCaptureCursorSession {
         CHyprSignalListener constraintsChanged;
         CHyprSignalListener stopped;
         CHyprSignalListener commit;
+        CHyprSignalListener sourceDestroyed;
     } m_listeners;
 
     void sendCursorEvents();

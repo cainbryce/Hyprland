@@ -1085,6 +1085,10 @@ void CMonitor::addDamage(const pixman_region32_t* rg) {
         g_pCompositor->scheduleFrameForMonitor(m_self.lock(), Aquamarine::IOutput::AQ_SCHEDULE_DAMAGE);
     } else if (m_damage.damage(rg))
         g_pCompositor->scheduleFrameForMonitor(m_self.lock(), Aquamarine::IOutput::AQ_SCHEDULE_DAMAGE);
+
+    // forward damage to screenshare sessions tracking this monitor
+    if (auto& mgr = Screenshare::mgr(); mgr)
+        mgr->onMonitorDamage(m_self.lock(), CRegion{const_cast<pixman_region32_t*>(rg)});
 }
 
 void CMonitor::addDamage(const CRegion& rg) {

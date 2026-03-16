@@ -4,10 +4,9 @@
 #include "../../helpers/memory/Memory.hpp"
 #include "../../protocols/types/Buffer.hpp"
 #include "../../render/Framebuffer.hpp"
+#include "../../helpers/DamageRing.hpp"
 #include "../eventLoop/EventLoopTimer.hpp"
 #include "../../render/Renderer.hpp"
-
-// TODO: do screenshare damage
 
 class CWLPointerResource;
 
@@ -76,6 +75,7 @@ namespace Screenshare {
         Vector2D                m_bufferSize = Vector2D(0, 0);
 
         CFramebuffer            m_tempFB;
+        CDamageRing             m_damageRing;
 
         SP<CEventLoopTimer>     m_shareStopTimer;
         bool                    m_sharing = false;
@@ -90,6 +90,7 @@ namespace Screenshare {
 
         void screenshareEvents(bool started);
         void calculateConstraints();
+        void accumulateDamage(const CRegion& damage);
         void init();
 
         friend class CScreenshareFrame;
@@ -207,6 +208,7 @@ namespace Screenshare {
         UP<CCursorshareSession> newCursorSession(wl_client* client, WP<CWLPointerResource> pointer);
 
         void                    onOutputCommit(PHLMONITOR monitor);
+        void                    onMonitorDamage(PHLMONITOR monitor, const CRegion& damage);
         bool                    isOutputBeingSSd(PHLMONITOR monitor);
 
       private:
