@@ -468,11 +468,11 @@ void CScreenshareFrame::storeTempFB() {
     }
 
     switch (m_session->m_type) {
-        case SHARE_REGION: // TODO: could this be better? this is how screencopy works
+        case SHARE_REGION:
         case SHARE_MONITOR: renderMonitor(); break;
         case SHARE_WINDOW: renderWindow(); break;
         case SHARE_NONE:
-        default: return;
+        default: break;
     }
 
     g_pHyprRenderer->endRender();
