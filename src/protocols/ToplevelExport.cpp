@@ -69,7 +69,13 @@ CToplevelExportFrame::CToplevelExportFrame(SP<CHyprlandToplevelExportFrameV1> re
     auto       bufSize = m_frame->bufferSize();
 
     const auto PSHMINFO = NFormatUtils::getPixelFormatFromDRM(format);
-    const auto stride   = NFormatUtils::minStride(PSHMINFO, bufSize.x);
+    if (!PSHMINFO) {
+        LOGM(Log::ERR, "No pixel format for drm format");
+        m_resource->sendFailed();
+        return;
+    }
+
+    const auto stride = NFormatUtils::minStride(PSHMINFO, bufSize.x);
     m_resource->sendBuffer(NFormatUtils::drmToShm(format), bufSize.x, bufSize.y, stride);
 
     if LIKELY (format != DRM_FORMAT_INVALID)
